@@ -8,7 +8,6 @@ Type of agents (for an NDA contract):
 3. DTSA: a term for the U.S. Defend Trade Secrets Act which protects individuals who disclose trade secrets.
 '''
 
-
 contract_duration_agent = Agent(
     role="Contract Duration Agebt",
     goal="Tell if the contract duration is how much the software vendor wants",
