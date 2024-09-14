@@ -1,9 +1,11 @@
 import re
+import json
 import requests
 from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
 import os
 from pdfminer.high_level import extract_text as extract_pdf_text
+from openai import OpenAI
 from docx import Document as DocxDocument
 from dotenv import load_dotenv
 
@@ -15,6 +17,14 @@ ALLOWED_EXTENSIONS = {'pdf', 'docx'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 load_dotenv()
+
+
+client = OpenAI(
+    api_key=os.getenv("UPSTAGE_API_KEY"),  
+    base_url="https://api.upstage.ai/v1/solar"  
+)
+
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -51,35 +61,62 @@ def parse_contract(file_path):
         raise
 
 
-
-def segment_contract(contract_text):
-    prompt = f"""
-    Please segment the following contract into key sections. Identify and label each section, such as:
-    - Definition of Confidential Information
-    - Duration of Agreement
-    - Obligations of Receiving Party
-    - Exceptions to Confidentiality
-
-    Here's the contract text:
-
-    {contract_text}
-
-    Return the segmented contract as a JSON object where keys are section names and values are the corresponding text.
+egment_contract(contract_text):
     """
-    
-    response = solar_llm.generate(prompt)
-    
-    # Assuming the LLM returns a well-formatted JSON string
-    import json
+    Segments an NDA (Non-Disclosure Agreement) into predefined sections.
+
+    Args:
+        contract_text (str): The full text of the NDA to be segmented.
+
+    Returns:
+        dict: A dictionary containing the segmented sections with their
+              summaries and full text.
+              If an error occurs during the process, an error message and raw response are returned.
+    """
+    # Define the prompt to analyze and segment the NDA text
+    prompt = f"""
+    Analyze the following Non-Disclosure Agreement (NDA) and segment it into key sections. 
+    Focus on identifying these common NDA sections:
+
+    1. Parties: Identify the parties entering into the agreement.
+    2. Definition of Confidential Information: How confidential information is defined in this agreement.
+    3. Obligations of Receiving Party: The duties of the party receiving confidential information.
+    4. Exclusions from Confidential Information: What is not considered confidential under this agreement.
+    5. Term and Termination: The duration of the agreement and how it can be terminated.
+    6. Return of Confidential Information: Provisions for returning or destroying confidential information.
+    7. Remedies: The consequences for breaching the agreement.
+
+    For each identified section, provide:
+    1. The section name
+    2. A brief summary of what the section covers (1-2 sentences)
+    3. The full text of the section
+
+    If a section is not present in the agreement, note its absence in the summary.
+    If you find additional important sections not listed above, include them as well.
+
+    Return the result as a JSON object where keys are section names and values are objects containing 'summary' and 'full_text'.
+
+    NDA text:
+    {contract_text}
+    """
+
     try:
-        segmented_contract = json.loads(response.text)
-        return segmented_contract
-    except json.JSONDecodeError:
-        raise Exception("Failed to segment contract into JSON format")
+        print("Sending request to Solar LLM...")
+        response = solar_llm.invoke(prompt)
+        print(f"Response status code: {response.status_code}")
+        print(f"Response content: {response.content}")
 
+        # Attempt to parse the response as JSON
+        try:
+            segmented_contract = json.loads(response.content)
+            return segmented_contract
+        except json.JSONDecodeError:
+            print("Failed to decode JSON response.")
+            return {"error": "Failed to parse JSON", "raw_response": response.content}
 
-
-def analyze_clause(clause):
+    except Exception as e:
+        print(f"An error occurred during the API request: {e}")
+        return {"error": str(e)}analyze_clause(clause):
     keywords = {
         'payment': ['payment', 'fee', 'cost', 'price'],
         'deadline': ['deadline', 'due date', 'timeline'],
@@ -136,10 +173,10 @@ def upload_file():
         file.save(file_path)
         try:
             contract_text = parse_contract(file_path)
-#            segmented_contract = segment_contract(contract_text)
+            segmented_contract = segment_contract(contract_text)
             return jsonify({
                 "message": "File uploaded and processed successfully",
-#                "segmented_contract": segmented_contract
+                "segmented_contract": segmented_contract
 #		"output": contract_text
             })
         except Exception as e:
