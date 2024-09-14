@@ -1,33 +1,31 @@
-import re
 import json
-import requests
-from flask import Flask, request, jsonify
-from werkzeug.utils import secure_filename
 import os
-from pdfminer.high_level import extract_text as extract_pdf_text
-from openai import OpenAI
-from docx import Document as DocxDocument
+import re
+
+import requests
 from dotenv import load_dotenv
+from flask import Flask, jsonify, request
+from openai import OpenAI
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-UPLOAD_FOLDER = 'uploads'
-ALLOWED_EXTENSIONS = {'pdf', 'docx'}
+UPLOAD_FOLDER = "uploads"
+ALLOWED_EXTENSIONS = {"pdf", "docx"}
 
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 load_dotenv()
 
 
 client = OpenAI(
-    api_key=os.getenv("UPSTAGE_API_KEY"),  
-    base_url="https://api.upstage.ai/v1/solar"  
+    api_key=os.getenv("UPSTAGE_API_KEY"), base_url="https://api.upstage.ai/v1/solar"
 )
 
 
-
 def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 def parse_contract(file_path):
     # Debug the API key
@@ -46,16 +44,18 @@ def parse_contract(file_path):
             response = requests.post(url, headers=headers, files=files)
 
             # Debug the response status code and content
-#            print(f"API Response Status Code: {response.status_code}")
-#            print(f"API Response Content: {response.text}")
+            #            print(f"API Response Status Code: {response.status_code}")
+            #            print(f"API Response Content: {response.text}")
 
             if response.status_code == 200:
                 result = response.json()
                 # Extract the full text from the response
-                contract_text = result.get('text', '')
+                contract_text = result.get("text", "")
                 return contract_text
             else:
-                raise Exception(f"Error in OCR API: {response.status_code}, {response.text}")
+                raise Exception(
+                    f"Error in OCR API: {response.status_code}, {response.text}"
+                )
     except Exception as e:
         print(f"An error occurred: {e}")
         raise
@@ -75,7 +75,7 @@ def segment_contract(contract_text):
     """
     # Define the prompt to analyze and segment the NDA text
     prompt = f"""
-    Analyze the following Non-Disclosure Agreement (NDA) and segment it into key sections. 
+    Analyze the following Non-Disclosure Agreement (NDA) and segment it into key sections.
     Focus on identifying these common NDA sections:
 
     1. Parties: Identify the parties entering into the agreement.
@@ -102,6 +102,7 @@ def segment_contract(contract_text):
 
     try:
         print("Sending request to Solar LLM...")
+        solar_llm = ()  # TODO: fix
         response = solar_llm.invoke(prompt)
         print(f"Response status code: {response.status_code}")
         print(f"Response content: {response.content}")
@@ -121,65 +122,84 @@ def segment_contract(contract_text):
 
 def segment_clauses(text):
     # Simple clause segmentation by paragraphs
-    return [clause.strip() for clause in re.split(r'\n\n|\r\n\r\n', text) if clause.strip()]
+    return [
+        clause.strip() for clause in re.split(r"\n\n|\r\n\r\n", text) if clause.strip()
+    ]
 
 
 def generate_recommendation(clause, analysis):
     recommendations = []
     if "payment" in analysis:
-        recommendations.append("Ensure payment terms are clearly defined and favorable.")
+        recommendations.append(
+            "Ensure payment terms are clearly defined and favorable."
+        )
     if "deadline" in analysis:
-        recommendations.append("Review deadlines to ensure they are realistic and include buffer time.")
+        recommendations.append(
+            "Review deadlines to ensure they are realistic and include buffer time."
+        )
     if "confidentiality" in analysis:
-        recommendations.append("Verify that confidentiality clauses protect your interests adequately.")
+        recommendations.append(
+            "Verify that confidentiality clauses protect your interests adequately."
+        )
     if "termination" in analysis:
-        recommendations.append("Check termination conditions and ensure they are fair to both parties.")
-    
-    return recommendations if recommendations else ["No specific recommendations. The clause appears standard."]
+        recommendations.append(
+            "Check termination conditions and ensure they are fair to both parties."
+        )
+
+    return (
+        recommendations
+        if recommendations
+        else ["No specific recommendations. The clause appears standard."]
+    )
 
 
-
-@app.route('/analyze', methods=['POST'])
+@app.route("/analyze", methods=["POST"])
 def analyze_contract():
     data = request.json
-    contract_text = data.get('text', '')
+    contract_text = data.get("text", "")
     clauses = segment_clauses(contract_text)
-    analysis = [{"clause": clause, "analysis": analyze_clause(clause)} for clause in clauses]
+    analyze_clause = ()  # TODO: fix
+    analysis = [
+        {"clause": clause, "analysis": analyze_clause(clause)} for clause in clauses
+    ]
     return jsonify({"analysis": analysis})
 
 
-@app.route('/upload', methods=['POST'])
+@app.route("/upload", methods=["POST"])
 def upload_file():
-    if 'file' not in request.files:
+    if "file" not in request.files:
         return jsonify({"error": "No file part"}), 400
-    file = request.files['file']
-    if file.filename == '':
+    file = request.files["file"]
+    if file.filename == "":
         return jsonify({"error": "No selected file"}), 400
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
         file.save(file_path)
         try:
             contract_text = parse_contract(file_path)
             segmented_contract = segment_contract(contract_text)
-            return jsonify({
-                "message": "File uploaded and processed successfully",
-                "segmented_contract": segmented_contract
-#		"output": contract_text
-            })
+            return jsonify(
+                {
+                    "message": "File uploaded and processed successfully",
+                    "segmented_contract": segmented_contract,
+                    # 		"output": contract_text
+                }
+            )
         except Exception as e:
             return jsonify({"error": str(e)}), 500
     return jsonify({"error": "File type not allowed"}), 400
 
 
-@app.route('/recommend', methods=['POST'])
+@app.route("/recommend", methods=["POST"])
 def recommend():
     data = request.json
-    clause = data.get('clause', '')
-    analysis = data.get('analysis', [])
-    recommendations = generate_recommendation(clause, ' '.join(analysis))
+    clause = data.get("clause", "")
+    analysis = data.get("analysis", [])
+    recommendations = generate_recommendation(clause, " ".join(analysis))
     return jsonify({"recommendations": recommendations})
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     app.run(debug=True)
