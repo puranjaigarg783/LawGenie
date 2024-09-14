@@ -61,7 +61,7 @@ def parse_contract(file_path):
         raise
 
 
-egment_contract(contract_text):
+def segment_contract(contract_text):
     """
     Segments an NDA (Non-Disclosure Agreement) into predefined sections.
 
@@ -116,20 +116,8 @@ egment_contract(contract_text):
 
     except Exception as e:
         print(f"An error occurred during the API request: {e}")
-        return {"error": str(e)}analyze_clause(clause):
-    keywords = {
-        'payment': ['payment', 'fee', 'cost', 'price'],
-        'deadline': ['deadline', 'due date', 'timeline'],
-        'confidentiality': ['confidential', 'non-disclosure', 'NDA'],
-        'termination': ['termination', 'cancel', 'end of agreement']
-    }
-    
-    issues = []
-    for category, words in keywords.items():
-        if any(word in clause.lower() for word in words):
-            issues.append(f"Found {category} clause. Please review carefully.")
-    
-    return issues if issues else ["No significant issues found."]
+        return {"error": str(e)}
+
 
 def segment_clauses(text):
     # Simple clause segmentation by paragraphs
