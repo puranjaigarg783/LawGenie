@@ -1,9 +1,11 @@
 import re
+import requests
 from flask import Flask, request, jsonify
 from werkzeug.utils import secure_filename
 import os
 from pdfminer.high_level import extract_text as extract_pdf_text
 from docx import Document as DocxDocument
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 
@@ -12,15 +14,70 @@ ALLOWED_EXTENSIONS = {'pdf', 'docx'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
+load_dotenv()
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-def parse_contract(file):
-    if file.filename.endswith('.pdf'):
-        return extract_pdf_text(file)
-    elif file.filename.endswith('.docx'):
-        doc = DocxDocument(file)
-        return '\n'.join([para.text for para in doc.paragraphs])
+def parse_contract(file_path):
+    # Debug the API key
+    api_key = os.getenv("UPSTAGE_API_KEY")
+    if not api_key:
+        raise Exception("API key is missing")
+    print(f"API Key: {api_key}")
+
+    url = "https://api.upstage.ai/v1/document-ai/ocr"
+    headers = {"Authorization": f"Bearer {api_key}"}
+
+    try:
+        with open(file_path, "rb") as file:
+            files = {"document": file}
+            print("Sending request to OCR API...")
+            response = requests.post(url, headers=headers, files=files)
+
+            # Debug the response status code and content
+#            print(f"API Response Status Code: {response.status_code}")
+#            print(f"API Response Content: {response.text}")
+
+            if response.status_code == 200:
+                result = response.json()
+                # Extract the full text from the response
+                contract_text = result.get('text', '')
+                return contract_text
+            else:
+                raise Exception(f"Error in OCR API: {response.status_code}, {response.text}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        raise
+
+
+
+def segment_contract(contract_text):
+    prompt = f"""
+    Please segment the following contract into key sections. Identify and label each section, such as:
+    - Definition of Confidential Information
+    - Duration of Agreement
+    - Obligations of Receiving Party
+    - Exceptions to Confidentiality
+
+    Here's the contract text:
+
+    {contract_text}
+
+    Return the segmented contract as a JSON object where keys are section names and values are the corresponding text.
+    """
+    
+    response = solar_llm.generate(prompt)
+    
+    # Assuming the LLM returns a well-formatted JSON string
+    import json
+    try:
+        segmented_contract = json.loads(response.text)
+        return segmented_contract
+    except json.JSONDecodeError:
+        raise Exception("Failed to segment contract into JSON format")
+
+
 
 def analyze_clause(clause):
     keywords = {
@@ -77,9 +134,18 @@ def upload_file():
         filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
-        contract_text = parse_contract(file_path)
-        return jsonify({"message": "File uploaded successfully", "text": contract_text})
+        try:
+            contract_text = parse_contract(file_path)
+#            segmented_contract = segment_contract(contract_text)
+            return jsonify({
+                "message": "File uploaded and processed successfully",
+#                "segmented_contract": segmented_contract
+#		"output": contract_text
+            })
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
     return jsonify({"error": "File type not allowed"}), 400
+
 
 @app.route('/recommend', methods=['POST'])
 def recommend():
