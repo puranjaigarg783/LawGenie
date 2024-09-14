@@ -18,13 +18,16 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 load_dotenv()
 
 
-client = OpenAI(
+solar_llm = OpenAI(
     api_key=os.getenv("UPSTAGE_API_KEY"), base_url="https://api.upstage.ai/v1/solar"
 )
 
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+
 
 
 def parse_contract(file_path):
@@ -60,7 +63,6 @@ def parse_contract(file_path):
         print(f"An error occurred: {e}")
         raise
 
-
 def segment_contract(contract_text):
     """
     Segments an NDA (Non-Disclosure Agreement) into predefined sections.
@@ -70,12 +72,13 @@ def segment_contract(contract_text):
 
     Returns:
         dict: A dictionary containing the segmented sections with their
-              summaries and full text.
-              If an error occurs during the process, an error message and raw response are returned.
+              summaries and full text. If an error occurs during the process, 
+              an error message and raw response are returned.
     """
+
     # Define the prompt to analyze and segment the NDA text
     prompt = f"""
-    Analyze the following Non-Disclosure Agreement (NDA) and segment it into key sections.
+    Analyze the following Non-Disclosure Agreement (NDA) and segment it into key sections. 
     Focus on identifying these common NDA sections:
 
     1. Parties: Identify the parties entering into the agreement.
@@ -102,22 +105,42 @@ def segment_contract(contract_text):
 
     try:
         print("Sending request to Solar LLM...")
-        solar_llm = ()  # TODO: fix
-        response = solar_llm.invoke(prompt)
-        print(f"Response status code: {response.status_code}")
-        print(f"Response content: {response.content}")
+
+        # Invoke the Solar LLM API and stream the result
+        stream = solar_llm.chat.completions.create(
+            model="solar-pro",
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            stream=True
+        )
+
+        response_content = ""
+
+        # Collecting the streamed response into a full text
+        for chunk in stream:
+            if chunk.choices[0].delta.content is not None:
+                response_content += chunk.choices[0].delta.content
+
+        print(f"Received response: {response_content}")
 
         # Attempt to parse the response as JSON
         try:
-            segmented_contract = json.loads(response.content)
+            segmented_contract = json.loads(response_content)
             return segmented_contract
         except json.JSONDecodeError:
             print("Failed to decode JSON response.")
-            return {"error": "Failed to parse JSON", "raw_response": response.content}
+            return {"error": "Failed to parse JSON", "raw_response": response_content}
 
     except Exception as e:
         print(f"An error occurred during the API request: {e}")
         return {"error": str(e)}
+                                 
+
+
 
 
 def segment_clauses(text):
