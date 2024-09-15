@@ -1,7 +1,7 @@
 import json
 import os
 import re
-
+import base64
 import requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
@@ -27,10 +27,44 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-
-
-
 def parse_contract(file_path):
+    api_key = os.getenv("UPSTAGE_API_KEY")
+    if not api_key:
+        raise Exception("API key is missing")
+    print(f"API Key: {api_key}")
+
+    url = "https://api.upstage.ai/v1/document-ai/document-parse"
+    headers = {"Authorization": f"Bearer {api_key}"}
+    
+    try:
+        with open(file_path, "rb") as file:
+            files = {"document": file}
+            data = {
+                "ocr": "auto",
+                "coordinates": "false",
+                "output_formats": "['text']"
+            }
+            print("Sending request to Document Parse API...")
+            response = requests.post(url, headers=headers, files=files, data=data)
+
+            if response.status_code == 200:
+                result = response.json()
+                print(json.dumps(result, indent=2))
+                # Extract the full text from the response
+                contract_text = ""
+                for page in result.get("pages", []):
+                    for element in page.get("elements", []):
+                        if element.get("category") == "text":
+                            contract_text += element.get("text", "") + "\n"
+                return contract_text
+            else:
+                raise Exception(f"Error in Document Parse API: {response.status_code}, {response.text}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        raise
+
+
+def parse_contract_old(file_path):
     # Debug the API key
     api_key = os.getenv("UPSTAGE_API_KEY")
     if not api_key:
@@ -92,7 +126,7 @@ def segment_contract(contract_text):
     For each identified section, provide:
     1. The section name
     2. A brief summary of what the section covers (1-2 sentences)
-    3. The full text of the section
+    3. The full text of the section. Do not skip any text within each section. Bring whole sentences.
 
     If a section is not present in the agreement, note its absence in the summary.
     If you find additional important sections not listed above, include them as well.
