@@ -1,0 +1,26 @@
+certifi==2024.8.30
+cffi==1.17.1
+pycparser==2.22
+wheel @ file:///opt/homebrew/Cellar/python%403.12/3.12.4/libexec/wheel-0.43.0-py3-none-any.whl#sha256=ff23205a590f2b902a2a21151019e96b93ab4a1409d7c9748b6bd210f4c0f44d
+python = "^3.12"
+streamlit = "^1.38.0"
+regex = "^2024.9.11"
+requests="2.32.3"
+flask="3.0.3"
+werkzeug="3.0.4"
+pdfminer="20191125"
+openai="1.45.0"
+docx="0.2.4"
+python-dotenv="1.0.1"
+streamlit="1.38.0"
+langgraph="0.2.21"
+pre-commit="3.8.0"
+crewai="0.55.2"
+composio-crewai="0.5.23"
+e2b="0.17.2a37",
+pydantic="2.9.1",
+langchain-openai="0.1.25"
+together="1.2.12"
+watchdog="4.0.2"
+
+
