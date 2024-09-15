@@ -33,10 +33,6 @@ def get_crew(input_doc):
 def get_agent_output(document_from_frontend):
     crew = get_crew(document_from_frontend)
     result = crew.kickoff()
-    print("\n\n\n\n\n")
-    print("CREW RESULT HERE!!!!!!!!!!!")
-    print("\n\n\n\n\n")
-    print(result)  # debug
 
     if isinstance(result, dict) and "accumulated_results" in result:
         return result["accumulated_results"]
