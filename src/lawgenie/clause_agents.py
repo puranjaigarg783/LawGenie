@@ -14,7 +14,7 @@ OPENAI_MODEL_NAME = os.environ.get("OPENAI_MODEL_NAME")
 llm = ChatOpenAI(
     openai_api_key=OPENAI_API_KEY,
     # openai_api_base=OPENAI_API_BASE,
-    model_name="gpt-4o",
+    model_name="gpt-4o-mini",
 )
 
 

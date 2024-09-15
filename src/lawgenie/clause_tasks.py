@@ -14,8 +14,7 @@ from lawgenie.models import AgentOutput
 load_dotenv()
 
 EXPECTED_TASK_OUTPUT = """
-To the result of the previous task, add a pydantic-compatible dictionary with key which is the name of the current clause, and value that is a dictionary that has two keys: an `analysis` of the current clause in laymen terms as well as a `recommendation` of how the current clause deviates from the benchmark clauses. You've been given the pydantic model in the output_pydantic parameter.
-"""
+A JSON that has two keys: an `analysis` of the current clause in laymen terms (in short, numbered points) as well as a `recommendation` of how the current clause deviates from the benchmark clauses."""
 
 
 def create_accumulating_task(original_task, key):
@@ -45,7 +44,7 @@ def get_tasks(input_document):
         Don't bother with the files inside the uploads folder.
         Only ingest files with docx, doc, and pdf extensions. You don't need to analyze these documents.
         If you pass the path of the documents to the RAG tool, it should be able to parse the documents.""",
-        expected_output="Inform the agents after you of the database where the documents have been added.",
+        expected_output=EXPECTED_TASK_OUTPUT,
         agent=corporate_lawyer_agent,
     )
     tasks.append(create_accumulating_task(ingest_documents_task, "ingest_documents"))
@@ -54,7 +53,7 @@ def get_tasks(input_document):
         description=f"""Take the current parties clause, which is inside this: `{input_document}`, and compare it with similar clauses in our RAG database to check how good it is.
     Your task is to identify the parties in our NDA, and see if the current NDA clause abides by all the best practices of similar clauses.
     There is a party that offers services, and there's a party that consumes services. This should be well defined within the clauses.""",
-        expected_output="A json that has an analysis of the current clause in laymen terms as well as a recommendation of how the current clause deviates from the benchmark clauses",
+        expected_output=EXPECTED_TASK_OUTPUT,
         agent=parties_corporate_lawyer,
         output_pydantic=AgentOutput,
     )
