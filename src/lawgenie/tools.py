@@ -8,6 +8,8 @@ rag_tools = tool_set.get_tools(
     apps=[App.RAGTOOL],
     actions=[
         Action.FILETOOL_LIST_FILES,
+        Action.FILETOOL_CHANGE_WORKING_DIRECTORY,
+        Action.FILETOOL_FIND_FILE,
     ],
 )
 

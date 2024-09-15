@@ -1,3 +1,5 @@
+from typing import Dict
+
 from pydantic import BaseModel, Field
 
 
@@ -8,3 +10,7 @@ class AgentOutput(BaseModel):
     recommendation: str = Field(
         description="How the current clause deviates from the benchmark documents"
     )
+
+
+class FinalOutput(BaseModel):
+    data: Dict[str, AgentOutput]
