@@ -1,15 +1,31 @@
+import os
+
 from crewai import Agent
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
 
 from lawgenie.tools import rag_query_tools, rag_tools
+
+load_dotenv()
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE")
+OPENAI_MODEL_NAME = os.environ.get("OPENAI_MODEL_NAME")
+llm = ChatOpenAI(
+    openai_api_key=OPENAI_API_KEY,
+    openai_api_base=OPENAI_API_BASE,
+    model_name=OPENAI_MODEL_NAME,
+)
 
 ### Manager/Scaffolding agents here
 corporate_lawyer_agent = Agent(
     role="Corporate Lawyer",
-    goal="Use the documents you're given and the RAG tool to build a knowledge base of NDAs that you can refer later.",
+    goal="Use the documents you're given and the RAG tool to build a knowledge base of NDAs that you can refer later. First, check if the documents have already been added.",
     backstory="""You are a corporate lawyer who has vast knowledge of NDAs, different sections within them, and how they are supposed to work.
     You also have the ability to call the RAG tool to ingest new documents that using the paths of files given to you and building a knowledge base of NDAs.""",
     tools=rag_tools,
     verbose=True,
+    llm=llm,
 )
 
 ### Clause agents and tasks here - try to check if one agent can be used for multiple clauses, since handoff between agents takes time
@@ -20,6 +36,7 @@ parties_corporate_lawyer = Agent(
     There's no one who does it as well as you do. Things that others miss, you don't.""",
     tools=rag_query_tools,
     verbose=True,
+    llm=llm,
 )
 
 # confidential information lawyer
@@ -30,6 +47,7 @@ confidential_information_lawyer = Agent(
     Identifying confidential information is like second nature to you. You can even tell the confidential information in an NDA even while sleeping.""",
     tools=rag_query_tools,
     verbose=True,
+    llm=llm,
 )
 
 # obligations of receiving party
@@ -41,6 +59,7 @@ obligation_information_lawyer = Agent(
     """,
     tools=rag_query_tools,
     verbose=True,
+    llm=llm,
 )
 
 
@@ -53,6 +72,7 @@ terms_and_termination_lawyer = Agent(
     """,
     tools=rag_query_tools,
     verbose=True,
+    llm=llm,
 )
 
 # remedies
@@ -64,6 +84,7 @@ remedies_lawyer = Agent(
     """,
     tools=rag_query_tools,
     verbose=True,
+    llm=llm,
 )
 
 # not sure to add return of confidential lawyer because I'm not sure how different it is from the confidential_information_lawyer, or if we can fold this into that
@@ -77,4 +98,5 @@ additional_information_lawyer = Agent(
     """,
     tools=rag_query_tools,
     verbose=True,
+    llm=llm,
 )

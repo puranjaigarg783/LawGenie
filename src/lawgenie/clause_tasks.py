@@ -1,4 +1,5 @@
 from crewai import Task
+from dotenv import load_dotenv
 
 from lawgenie.clause_agents import (
     additional_information_lawyer,
@@ -18,6 +19,8 @@ from lawgenie.nda_to_check import (
     remedies_nda,
     terms_and_termination_nda,
 )
+
+load_dotenv()
 
 ingest_documents_task = Task(
     description="""Ingest benchmark NDAs that will be used as a yardstick to compare NDAs we will judge later.
