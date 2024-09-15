@@ -13,14 +13,14 @@ OPENAI_API_BASE = os.environ.get("OPENAI_API_BASE")
 OPENAI_MODEL_NAME = os.environ.get("OPENAI_MODEL_NAME")
 llm = ChatOpenAI(
     openai_api_key=OPENAI_API_KEY,
-    openai_api_base=OPENAI_API_BASE,
-    model_name=OPENAI_MODEL_NAME,
+    # openai_api_base=OPENAI_API_BASE,
+    model_name="gpt-4o",
 )
 
-### Manager/Scaffolding agents here
+
 corporate_lawyer_agent = Agent(
     role="Corporate Lawyer",
-    goal="Use the documents you're given and the RAG tool to build a knowledge base of NDAs that you can refer later. First, check if the documents have already been added.",
+    goal="Use the documents you're given and the tools you have to build a knowledge base of NDAs that you can refer later. First, check if the documents have already been added.",
     backstory="""You are a corporate lawyer who has vast knowledge of NDAs, different sections within them, and how they are supposed to work.
     You also have the ability to call the RAG tool to ingest new documents that using the paths of files given to you and building a knowledge base of NDAs.""",
     tools=rag_tools,
@@ -34,17 +34,6 @@ parties_corporate_lawyer = Agent(
     goal="To compare the current NDA parties clause to the ones in our RAG database and identify how good it is.",
     backstory="""You are a corporate lawyer who specialises in identifying who the parties in a certain NDA are.
     There's no one who does it as well as you do. Things that others miss, you don't.""",
-    tools=rag_query_tools,
-    verbose=True,
-    llm=llm,
-)
-
-# confidential information lawyer
-confidential_information_lawyer = Agent(
-    role="Confidential Information Lawyer",
-    goal="To compare the current NDA confidential information clause to the ones in our RAG database and identify how good it is.",
-    backstory="""You are a confidential information lawyer who specialises in identifying what the confidential information is in a certain NDA.
-    Identifying confidential information is like second nature to you. You can even tell the confidential information in an NDA even while sleeping.""",
     tools=rag_query_tools,
     verbose=True,
     llm=llm,
@@ -86,8 +75,6 @@ remedies_lawyer = Agent(
     verbose=True,
     llm=llm,
 )
-
-# not sure to add return of confidential lawyer because I'm not sure how different it is from the confidential_information_lawyer, or if we can fold this into that
 
 # additional important information
 additional_information_lawyer = Agent(

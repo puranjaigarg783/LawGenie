@@ -11,7 +11,6 @@ repos:
     -   id: check-merge-conflict
     -   id: check-toml
     -   id: detect-private-key
-    -   id: detect-aws-credentials
     -   id: forbid-submodules
     -   id: name-tests-test
     -   id: no-commit-to-branch

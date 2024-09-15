@@ -1,13 +1,15 @@
-import regex
 import json
 import os
 import re
+
+import regex
 import requests
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
-from werkzeug.utils import secure_filename
 from together import Together
-from crew import get_agent_output
+from werkzeug.utils import secure_filename
+
+from lawgenie.crew import get_agent_output
 
 app = Flask(__name__)
 
@@ -18,8 +20,10 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 load_dotenv()
 
+TOGETHER_API_KEY = os.environ.get("TOGETHER_API_KEY")
+print("TOGETHER_API_KEY: ", TOGETHER_API_KEY)
+client = Together(api_key=TOGETHER_API_KEY)
 
-client = Together(api_key=os.getenv("TOGETHER_API_KEY"))
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -35,15 +39,17 @@ def inspect_and_serialize(obj):
         return [inspect_and_serialize(item) for item in obj]
     elif isinstance(obj, dict):
         return {key: inspect_and_serialize(value) for key, value in obj.items()}
-    elif hasattr(obj, '__dict__'):
+    elif hasattr(obj, "__dict__"):
         return inspect_and_serialize(obj.__dict__)
     else:
         return str(obj)
+
 
 def debug_crew_output(crew_output):
     print("Type of crew_output:", type(crew_output))
     print("Content of crew_output:")
     print(json.dumps(inspect_and_serialize(crew_output), indent=2))
+
 
 def parse_combined_output(combined_output):
     sections = {}
@@ -56,36 +62,32 @@ def parse_combined_output(combined_output):
         line = line.strip()
         if line.startswith("Section Name:"):
             if current_section:
-                
                 sections[current_section] = {
                     "summary": current_summary.strip(),
-                    "full_text": current_full_text.strip()
+                    "full_text": current_full_text.strip(),
                 }
-            
-            current_section = line[len("Section Name:"):].strip()
+
+            current_section = line[len("Section Name:") :].strip()
             current_summary = ""
             current_full_text = ""
         elif line.startswith("Summary:"):
-            current_summary = line[len("Summary:"):].strip()
+            current_summary = line[len("Summary:") :].strip()
         elif line.startswith("Full Text:"):
-            current_full_text = line[len("Full Text:"):].strip()
+            current_full_text = line[len("Full Text:") :].strip()
         elif current_section:
-            
             current_full_text += line + " "
 
-    
     if current_section:
         sections[current_section] = {
             "summary": current_summary.strip(),
-            "full_text": current_full_text.strip()
+            "full_text": current_full_text.strip(),
         }
 
     return sections
 
 
 def extract_json(text):
-    
-    match = regex.search(r'\{(?:[^{}]|(?R))*\}', text, regex.DOTALL)
+    match = regex.search(r"\{(?:[^{}]|(?R))*\}", text, regex.DOTALL)
     if match:
         return match.group(0)
     else:
@@ -102,25 +104,29 @@ def call_llama_via_together_ai(prompt):
         top_k=50,
         repetition_penalty=1,
         stop=["<|eot_id|>", "<|eom_id|>"],
-        stream=False
+        stream=False,
     )
     return response.choices[0].message.content
+
 
 def segment_contract(contract_text):
     print("In segment")
     print(f"Contract text length: {len(contract_text)}")
 
-    chunk_size = 16000  
-    chunks = [contract_text[i:i+chunk_size] for i in range(0, len(contract_text), chunk_size)]
+    chunk_size = 16000
+    chunks = [
+        contract_text[i : i + chunk_size]
+        for i in range(0, len(contract_text), chunk_size)
+    ]
     print(f"Number of chunks: {len(chunks)}")
     combined_output = ""
 
     for idx, chunk in enumerate(chunks):
         prompt = f"""
         Analyze the following part {idx+1}/{len(chunks)} of a Non-Disclosure Agreement (NDA) and segment it into key sections.
-        
+
         Focus on identifying these common NDA sections:
-        
+
         1. Parties
         2. Definition of Confidential Information
         3. Obligations of Receiving Party
@@ -128,25 +134,25 @@ def segment_contract(contract_text):
         5. Term and Termination
         6. Return of Confidential Information
         7. Remedies
-        
+
         For each identified section, provide:
-        
+
         - Section Name: [Name of the section]
         - Summary: [A brief summary of what the section covers (1-2 sentences)]
         - Full Text: [The full text of the section. Do not skip any text within each section.]
-        
+
         If a section is not present in this part, ignore it.
-        
+
         If you find additional important sections not listed above, include them as well.
-        
+
         Output Format:
-        
+
         For each section, output in the following format:
-        
+
         Section Name: [Name] Summary: [Summary] Full Text: [Full text]
-        
+
         Do not include any additional text outside this format.
-        
+
         NDA text part {idx+1}/{len(chunks)}:
         {chunk}
         """
@@ -171,23 +177,18 @@ def parse_contract(file_path):
 
     url = "https://api.upstage.ai/v1/document-ai/document-parse"
     headers = {"Authorization": f"Bearer {api_key}"}
-    
+
     try:
         with open(file_path, "rb") as file:
             files = {"document": file}
-            data = {
-                "ocr": "auto",
-                "coordinates": "false",
-                "output_formats": "['text']"
-            }
+            data = {"ocr": "auto", "coordinates": "false", "output_formats": "['text']"}
             print("Sending request to Document Parse API...")
             response = requests.post(url, headers=headers, files=files, data=data)
 
             if response.status_code == 200:
                 result = response.json()
                 print(f"API Response: {json.dumps(result, indent=2)}")
-                
-                
+
                 contract_text = ""
                 if "content" in result and "text" in result["content"]:
                     contract_text = result["content"]["text"]
@@ -197,27 +198,30 @@ def parse_contract(file_path):
                         for element in page.get("elements", []):
                             if element.get("category") == "text":
                                 contract_text += element.get("text", "") + "\n"
-                
+
                 print(f"Extracted text length: {len(contract_text)}")
                 print(f"First 500 characters of extracted text: {contract_text[:500]}")
-                
+
                 if len(contract_text) == 0:
                     print("Warning: No text extracted from the document")
                     print("API Response structure:")
                     print(json.dumps(result, indent=2))
-                
+
                 return contract_text
             else:
-                raise Exception(f"Error in Document Parse API: {response.status_code}, {response.text}")
+                raise Exception(
+                    f"Error in Document Parse API: {response.status_code}, {response.text}"
+                )
     except Exception as e:
         print(f"An error occurred: {e}")
         raise
 
+
 def segment_clauses(text):
-    
     return [
         clause.strip() for clause in re.split(r"\n\n|\r\n\r\n", text) if clause.strip()
     ]
+
 
 def generate_recommendation(clause, analysis):
     recommendations = []
@@ -244,14 +248,16 @@ def generate_recommendation(clause, analysis):
         else ["No specific recommendations. The clause appears standard."]
     )
 
+
 @app.route("/analyze", methods=["POST"])
 def analyze_contract():
     data = request.json
     contract_text = data.get("text", "")
     clauses = segment_clauses(contract_text)
-    
+
     analysis = [
-        {"clause": clause, "analysis": analyze_clause(clause)} for clause in clauses
+        {"clause": clause, "analysis": analyze_clause(clause)}  # noqa: F821
+        for clause in clauses
     ]
     return jsonify({"analysis": analysis})
 
@@ -279,27 +285,24 @@ def upload_file():
             segmented_contract = parse_combined_output(combined_output)
             print("Segmentation complete.")
 
-
             crew_output = get_agent_output(segmented_contract)
-            debug_crew_output(crew_output) 
-
+            debug_crew_output(crew_output)
 
             response_data = {
                 "message": "File uploaded and processed successfully",
                 "segmented_contract": segmented_contract,
-                "crew_analysis": inspect_and_serialize(crew_output)
+                "crew_analysis": inspect_and_serialize(crew_output),
             }
-            print("Response Data:", response_data)  
+            print("Response Data:", response_data)
 
-            
             return jsonify(response_data)
         except Exception as e:
             print(f"An error occurred: {str(e)}")
             import traceback
+
             traceback.print_exc()
             return jsonify({"error": str(e)}), 500
     return jsonify({"error": "File type not allowed"}), 400
-
 
 
 @app.route("/recommend", methods=["POST"])
@@ -310,7 +313,7 @@ def recommend():
     recommendations = generate_recommendation(clause, " ".join(analysis))
     return jsonify({"recommendations": recommendations})
 
+
 if __name__ == "__main__":
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-    app.run(host='0.0.0.0', debug=True, port=5002)
-
+    app.run(host="0.0.0.0", debug=True, port=5002)
