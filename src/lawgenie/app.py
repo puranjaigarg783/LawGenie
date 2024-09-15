@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from werkzeug.utils import secure_filename
 from together import Together
+from crew import get_agent_output
 
 app = Flask(__name__)
 
@@ -17,12 +18,32 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 load_dotenv()
 
-# Initialize Together AI client
+
 client = Together(api_key=os.getenv("TOGETHER_API_KEY"))
 
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+def inspect_and_serialize(obj):
+    """
+    Inspect the object and return a JSON-serializable version of it.
+    """
+    if isinstance(obj, (str, int, float, bool, type(None))):
+        return obj
+    elif isinstance(obj, list):
+        return [inspect_and_serialize(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {key: inspect_and_serialize(value) for key, value in obj.items()}
+    elif hasattr(obj, '__dict__'):
+        return inspect_and_serialize(obj.__dict__)
+    else:
+        return str(obj)
+
+def debug_crew_output(crew_output):
+    print("Type of crew_output:", type(crew_output))
+    print("Content of crew_output:")
+    print(json.dumps(inspect_and_serialize(crew_output), indent=2))
 
 def parse_combined_output(combined_output):
     sections = {}
@@ -35,12 +56,12 @@ def parse_combined_output(combined_output):
         line = line.strip()
         if line.startswith("Section Name:"):
             if current_section:
-                # Save the previous section
+                
                 sections[current_section] = {
                     "summary": current_summary.strip(),
                     "full_text": current_full_text.strip()
                 }
-            # Start a new section
+            
             current_section = line[len("Section Name:"):].strip()
             current_summary = ""
             current_full_text = ""
@@ -49,10 +70,10 @@ def parse_combined_output(combined_output):
         elif line.startswith("Full Text:"):
             current_full_text = line[len("Full Text:"):].strip()
         elif current_section:
-            # Continue accumulating full text
+            
             current_full_text += line + " "
 
-    # Save the last section
+    
     if current_section:
         sections[current_section] = {
             "summary": current_summary.strip(),
@@ -63,7 +84,7 @@ def parse_combined_output(combined_output):
 
 
 def extract_json(text):
-    # This regex matches the first JSON object in the text using recursive patterns
+    
     match = regex.search(r'\{(?:[^{}]|(?R))*\}', text, regex.DOTALL)
     if match:
         return match.group(0)
@@ -166,7 +187,7 @@ def parse_contract(file_path):
                 result = response.json()
                 print(f"API Response: {json.dumps(result, indent=2)}")
                 
-                # Extract the full text from the response
+                
                 contract_text = ""
                 if "content" in result and "text" in result["content"]:
                     contract_text = result["content"]["text"]
@@ -193,7 +214,7 @@ def parse_contract(file_path):
         raise
 
 def segment_clauses(text):
-    # Simple clause segmentation by paragraphs
+    
     return [
         clause.strip() for clause in re.split(r"\n\n|\r\n\r\n", text) if clause.strip()
     ]
@@ -228,7 +249,7 @@ def analyze_contract():
     data = request.json
     contract_text = data.get("text", "")
     clauses = segment_clauses(contract_text)
-    # Note: analyze_clause function is not defined; you need to implement it
+    
     analysis = [
         {"clause": clause, "analysis": analyze_clause(clause)} for clause in clauses
     ]
@@ -254,19 +275,23 @@ def upload_file():
             print(f"Parsed contract text length: {len(contract_text)}")
             print("Contract parsed. Starting segmentation...")
             combined_output = segment_contract(contract_text)
-            print(combined_output)
             print("Parsing combined output...")
             segmented_contract = parse_combined_output(combined_output)
-            print(segmented_contract)
             print("Segmentation complete.")
+
+
+            crew_output = get_agent_output(segmented_contract)
+            debug_crew_output(crew_output) 
+
 
             response_data = {
                 "message": "File uploaded and processed successfully",
                 "segmented_contract": segmented_contract,
+                "crew_analysis": inspect_and_serialize(crew_output)
             }
-            print("Response Data:", response_data)  # Print the response
+            print("Response Data:", response_data)  
 
-            # Return the JSON response
+            
             return jsonify(response_data)
         except Exception as e:
             print(f"An error occurred: {str(e)}")
