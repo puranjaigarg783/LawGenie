@@ -2,9 +2,9 @@ certifi==2024.8.30
 cffi==1.17.1
 pycparser==2.22
 wheel @ file:///opt/homebrew/Cellar/python%403.12/3.12.4/libexec/wheel-0.43.0-py3-none-any.whl#sha256=ff23205a590f2b902a2a21151019e96b93ab4a1409d7c9748b6bd210f4c0f44d
-python = "^3.12"
-streamlit = "^1.38.0"
-regex = "^2024.9.11"
+python = "3.12"
+streamlit = "1.38.0"
+regex = "2024.9.11"
 requests="2.32.3"
 flask="3.0.3"
 werkzeug="3.0.4"
