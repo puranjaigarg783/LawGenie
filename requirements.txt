@@ -1,5 +1,0 @@
-Flask
-Werkzeug
-pdfminer.six
-python-docx
-streamlit

@@ -24,8 +24,6 @@ share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-.lawgenie/
-lawgenie/
 .vscode/
 MANIFEST
 
