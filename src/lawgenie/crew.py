@@ -41,4 +41,8 @@ crew = Crew(
     verbose=True,
 )
 
-crew.kickoff()
+
+def get_agent_output(document_from_frontend):
+    result = crew.kickoff()
+    print(result)  # debug
+    return result.pydantic
