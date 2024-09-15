@@ -16,6 +16,9 @@ dependencies = [
     "langgraph>=0.2.21",
     "pre-commit>=3.8.0",
     "crewai>=0.55.2",
+    "composio-crewai>=0.5.23",
+    "e2b>=0.17.2a37",
+    "pydantic>=2.9.1",
 ]
 
 [build-system]

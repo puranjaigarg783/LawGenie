@@ -162,3 +162,8 @@ cython_debug/
 #.idea/
 
 *.lock
+*.doc
+*.docx
+*.pdf
+
+db
