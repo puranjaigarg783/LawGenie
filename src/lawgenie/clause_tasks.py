@@ -14,7 +14,7 @@ from lawgenie.models import AgentOutput
 load_dotenv()
 
 EXPECTED_TASK_OUTPUT = """
-A JSON that has two keys: an `analysis` of the current clause in laymen terms (in short, numbered points) as well as a `recommendation` of how the current clause deviates from the benchmark clauses."""
+A JSON that has two keys: an `analysis` of the current clause in laymen terms as a paragraph as well as a `recommendation` of how the current clause deviates from the benchmark clauses (in short, numbered points)."""
 
 
 def create_accumulating_task(original_task, key):
