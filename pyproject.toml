@@ -33,3 +33,38 @@ line-length = 88
 
 [tool.isort]
 profile = "black"
+
+[tool.poetry]
+name = "lawgenie"
+version = "0.1.0"
+description = "An application to parse and interpret contract and draft responses"
+authors = ["Puranjai Garg"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+streamlit = "^1.38.0"
+regex = "^2024.9.11"
+requests="2.32.3"
+flask="3.0.3"
+werkzeug="3.0.4"
+pdfminer="20191125"
+openai="1.45.0"
+docx="0.2.4"
+python-dotenv="1.0.1"
+streamlit="1.38.0"
+langgraph="0.2.21"
+pre-commit="3.8.0"
+crewai="0.55.2"
+composio-crewai="0.5.23"
+e2b="0.17.2a37",
+pydantic="2.9.1",
+langchain-openai="0.1.25"
+together="1.2.12"
+watchdog="4.0.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
